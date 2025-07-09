@@ -178,9 +178,9 @@ class _VideosPageState extends State<VideosPage> {
     return GridView.builder(
       padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisCount: 4,
+        crossAxisSpacing: 1,
+        mainAxisSpacing: 1,
         childAspectRatio: 16 / 9,
       ),
       itemCount: videos.length,
@@ -207,11 +207,7 @@ class VideoThumbnail extends StatelessWidget {
               _playVideo(context);
             },
             child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-              ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -232,15 +228,6 @@ class VideoThumbnail extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Play button
-                    const Center(
-                      child: Icon(
-                        Icons.play_circle_filled,
-                        color: Colors.white,
-                        size: 50,
-                      ),
-                    ),
-                    // Duration
                     Positioned(
                       bottom: 8,
                       right: 8,
@@ -248,10 +235,6 @@ class VideoThumbnail extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           _formatDuration(asset.videoDuration),
