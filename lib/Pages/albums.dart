@@ -41,28 +41,19 @@ class _AlbumsPageState extends State<AlbumsPage> with TickerProviderStateMixin {
 
   Future<void> _loadAlbums() async {
     try {
-      // Check permission first
       final permission = await _mediaCache.checkPermission();
 
       if (!permission) {
-        setState(() {
-          hasPermission = false;
-        });
+        setState(() => hasPermission = false);
         _showPermissionDialog();
         return;
       }
 
-      setState(() {
-        hasPermission = true;
-      });
-
-      // Load albums from cache (should be instant if cached)
+      setState(() => hasPermission = true);
       final loadedAlbums = await _mediaCache.loadAlbums();
 
       if (mounted) {
-        setState(() {
-          albums = loadedAlbums;
-        });
+        setState(() => albums = loadedAlbums);
         _fadeController.forward();
       }
     } catch (e) {
@@ -74,33 +65,28 @@ class _AlbumsPageState extends State<AlbumsPage> with TickerProviderStateMixin {
       }
     }
   }
+
   void _showPermissionDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Permission Required'),
-          content: const Text(
-            'This app needs access to your photos to display albums. Please grant permission in settings.',
+      builder: (context) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text('This app needs access to your photos to display albums. Please grant permission in settings.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _mediaCache.clearCache();
-                _loadAlbums();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _mediaCache.clearCache();
+              _loadAlbums();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -118,80 +104,59 @@ class _AlbumsPageState extends State<AlbumsPage> with TickerProviderStateMixin {
 
   Widget _buildBody() {
     if (!hasPermission) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.photo_album_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Permission Required',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Please grant photo access permission to view your albums',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  _mediaCache.clearCache();
-                  _loadAlbums();
-                },
-                child: const Text('Grant Permission'),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.photo_album_outlined,
+        'Permission Required',
+        'Please grant photo access permission to view your albums',
+        'Grant Permission',
+            () {
+          _mediaCache.clearCache();
+          _loadAlbums();
+        },
       );
     }
 
     if (albums.isEmpty) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.photo_album_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              SizedBox(height: 20),
-              Text(
-                'No Albums Found',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No photo albums were found on your device',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.photo_album_outlined,
+        'No Albums Found',
+        'No photo albums were found on your device',
+        null,
+        null,
       );
     }
 
     return FadeTransition(
       opacity: _fadeAnimation,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: albums.length,
+        itemBuilder: (context, index) {
+          return AlbumTile(album: albums[index]);
+        },
+      ),
+    );
+  }
 
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: albums.length,
-          itemBuilder: (context, index) {
-            return AlbumTile(album: albums[index]);
-          },
+  Widget _buildCenterMessage(IconData icon, String title, String subtitle, String? buttonText, VoidCallback? onPressed) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey),
+            const SizedBox(height: 20),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            if (buttonText != null && onPressed != null) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: onPressed, child: Text(buttonText)),
+            ],
+          ],
         ),
+      ),
     );
   }
 }
@@ -232,7 +197,6 @@ class _AlbumTileState extends State<AlbumTile> with SingleTickerProviderStateMix
 
   Future<void> _loadAlbumData() async {
     try {
-      // Load count and thumbnail in parallel
       final countFuture = widget.album.assetCountAsync;
       final assetsFuture = widget.album.getAssetListPaged(page: 0, size: 1);
 
@@ -241,24 +205,18 @@ class _AlbumTileState extends State<AlbumTile> with SingleTickerProviderStateMix
       final assets = results[1] as List<AssetEntity>;
 
       if (mounted) {
-        setState(() {
-          _assetCount = count;
-        });
+        setState(() => _assetCount = count);
 
         if (assets.isNotEmpty) {
           final thumbnailData = await assets.first.thumbnailDataWithSize(const ThumbnailSize(120, 120));
           if (mounted && thumbnailData != null) {
-            setState(() {
-              _thumbnailData = thumbnailData;
-            });
+            setState(() => _thumbnailData = thumbnailData);
           }
         }
         _controller.forward();
       }
     } catch (e) {
-      if (mounted) {
-        _controller.forward();
-      }
+      if (mounted) _controller.forward();
     }
   }
 
@@ -269,19 +227,14 @@ class _AlbumTileState extends State<AlbumTile> with SingleTickerProviderStateMix
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            _openAlbumDetails(context);
-          },
+          onTap: () => _openAlbumDetails(context),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                // Album thumbnail
                 Container(
                   width: 60,
                   height: 60,
@@ -292,54 +245,33 @@ class _AlbumTileState extends State<AlbumTile> with SingleTickerProviderStateMix
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: _thumbnailData != null
-                        ? Image.memory(
-                      _thumbnailData!,
-                      fit: BoxFit.cover,
-                      width: 60,
-                      height: 60,
-                    )
+                        ? Image.memory(_thumbnailData!, fit: BoxFit.cover, width: 60, height: 60)
                         : Container(
                       color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.photo_album,
-                        color: Colors.grey,
-                        size: 30,
-                      ),
+                      child: const Icon(Icons.photo_album, color: Colors.grey, size: 30),
                     ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Album info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.album.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '$_assetCount ${_assetCount == 1 ? 'item' : 'items'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
-                // Arrow icon
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
               ],
             ),
           ),
@@ -397,13 +329,10 @@ class _AlbumDetailsPageState extends State<AlbumDetailsPage> with TickerProvider
 
   Future<void> _loadAlbumAssets() async {
     try {
-      // Load album assets from cache (should be instant if cached)
       final loadedAssets = await _mediaCache.loadAlbumAssets(widget.album);
 
       if (mounted) {
-        setState(() {
-          assets = loadedAssets;
-        });
+        setState(() => assets = loadedAssets);
         _fadeController.forward();
       }
     } catch (e) {
@@ -423,9 +352,7 @@ class _AlbumDetailsPageState extends State<AlbumDetailsPage> with TickerProvider
       final loadedAssets = await _mediaCache.loadAlbumAssets(widget.album, forceReload: true);
 
       if (mounted) {
-        setState(() {
-          assets = loadedAssets;
-        });
+        setState(() => assets = loadedAssets);
         _fadeController.forward();
       }
     } catch (e) {
@@ -464,45 +391,87 @@ class _AlbumDetailsPageState extends State<AlbumDetailsPage> with TickerProvider
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.photo_library_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
+              Icon(Icons.photo_library_outlined, size: 80, color: Colors.grey),
               SizedBox(height: 20),
-              Text(
-                'No Media Found',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              Text('No Media Found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
-              Text(
-                'This album is empty',
-                style: TextStyle(color: Colors.grey),
-              ),
+              Text('This album is empty', style: TextStyle(color: Colors.grey)),
             ],
           ),
         ),
       );
     }
 
+    final groupedAssets = _groupAssetsByDate(assets);
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: RefreshIndicator(
         onRefresh: _refreshAlbumAssets,
-        child: GridView.builder(
+        child: ListView.builder(
           padding: const EdgeInsets.all(8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 1,
-            mainAxisSpacing: 1,
-          ),
-          itemCount: assets.length,
+          itemCount: groupedAssets.length,
           itemBuilder: (context, index) {
-            return AlbumAssetThumbnail(asset: assets[index]);
+            final dateKey = groupedAssets.keys.elementAt(index);
+            final dayAssets = groupedAssets[dateKey]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    dateKey,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 1,
+                    mainAxisSpacing: 1,
+                  ),
+                  itemCount: dayAssets.length,
+                  itemBuilder: (context, assetIndex) {
+                    return AlbumAssetThumbnail(asset: dayAssets[assetIndex]);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            );
           },
         ),
       ),
     );
+  }
+
+  Map<String, List<AssetEntity>> _groupAssetsByDate(List<AssetEntity> assets) {
+    final Map<String, List<AssetEntity>> grouped = {};
+
+    for (final asset in assets) {
+      final date = asset.createDateTime;
+      final dateKey = '${date.day}/${date.month}/${date.year}';
+      grouped.putIfAbsent(dateKey, () => []).add(asset);
+    }
+
+    // Sort by actual date (newest first)
+    final sortedEntries = grouped.entries.toList()..sort((a, b) {
+      final dateA = _parseDateKey(a.key);
+      final dateB = _parseDateKey(b.key);
+      return dateB.compareTo(dateA); // Newest first
+    });
+
+    return Map.fromEntries(sortedEntries);
+  }
+
+  DateTime _parseDateKey(String dateKey) {
+    final parts = dateKey.split('/');
+    final day = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final year = int.parse(parts[2]);
+    return DateTime(year, month, day);
   }
 }
 
@@ -543,9 +512,7 @@ class _AlbumAssetThumbnailState extends State<AlbumAssetThumbnail> with SingleTi
     try {
       final data = await widget.asset.thumbnailDataWithSize(const ThumbnailSize(200, 200));
       if (mounted && data != null) {
-        setState(() {
-          _thumbnailData = data;
-        });
+        setState(() => _thumbnailData = data);
         _controller.forward();
       }
     } catch (e) {
@@ -556,42 +523,26 @@ class _AlbumAssetThumbnailState extends State<AlbumAssetThumbnail> with SingleTi
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        _openAsset(context);
-      },
+      onTap: () => _openAsset(context),
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-        ),
+        decoration: BoxDecoration(color: Colors.grey[300]),
         child: _thumbnailData != null
             ? FadeTransition(
           opacity: _animation,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.memory(
-                _thumbnailData!,
-                fit: BoxFit.cover,
-              ),
-              // Video indicator
+              Image.memory(_thumbnailData!, fit: BoxFit.cover),
               if (widget.asset.type == AssetType.video)
                 const Positioned(
                   bottom: 4,
                   right: 4,
-                  child: Icon(
-                    Icons.play_circle_filled,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  child: Icon(Icons.play_circle_filled, color: Colors.white, size: 20),
                 ),
             ],
           ),
         )
-            : Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-          ),
-        ),
+            : Container(color: Colors.grey[300]),
       ),
     );
   }

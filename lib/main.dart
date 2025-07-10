@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
           elevation: 1,
           shadowColor: Colors.black12,
         ),
-        cardTheme: const CardTheme(
+        cardTheme: const CardThemeData(
           color: Colors.white,
           shadowColor: Colors.black12,
           elevation: 2,
@@ -93,7 +93,7 @@ class MyApp extends StatelessWidget {
           elevation: 1,
           shadowColor: Colors.white12,
         ),
-        cardTheme: const CardTheme(
+        cardTheme: const CardThemeData(
           color: Colors.black,
           shadowColor: Colors.white12,
           elevation: 2,

@@ -40,28 +40,19 @@ class _PhotosPageState extends State<PhotosPage> with TickerProviderStateMixin {
 
   Future<void> _loadPhotos() async {
     try {
-      // Check permission first
       final permission = await _mediaCache.checkPermission();
 
       if (!permission) {
-        setState(() {
-          hasPermission = false;
-        });
+        setState(() => hasPermission = false);
         _showPermissionDialog();
         return;
       }
 
-      setState(() {
-        hasPermission = true;
-      });
-
-      // Load photos from cache (should be instant if cached)
+      setState(() => hasPermission = true);
       final loadedPhotos = await _mediaCache.loadPhotos();
 
       if (mounted) {
-        setState(() {
-          photos = loadedPhotos;
-        });
+        setState(() => photos = loadedPhotos);
         _fadeController.forward();
       }
     } catch (e) {
@@ -73,33 +64,28 @@ class _PhotosPageState extends State<PhotosPage> with TickerProviderStateMixin {
       }
     }
   }
+
   void _showPermissionDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Permission Required'),
-          content: const Text(
-            'This app needs access to your photos to display them. Please grant permission in settings.',
+      builder: (context) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text('This app needs access to your photos to display them. Please grant permission in settings.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _mediaCache.clearCache();
-                _loadPhotos();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _mediaCache.clearCache();
+              _loadPhotos();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -117,85 +103,118 @@ class _PhotosPageState extends State<PhotosPage> with TickerProviderStateMixin {
 
   Widget _buildBody() {
     if (!hasPermission) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.photo_library_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Permission Required',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Please grant photo access permission to view your photos',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  _mediaCache.clearCache();
-                  _loadPhotos();
-                },
-                child: const Text('Grant Permission'),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.photo_library_outlined,
+        'Permission Required',
+        'Please grant photo access permission to view your photos',
+        'Grant Permission',
+            () {
+          _mediaCache.clearCache();
+          _loadPhotos();
+        },
       );
     }
 
     if (photos.isEmpty) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.photo_library_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              SizedBox(height: 20),
-              Text(
-                'No Photos Found',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No photos were found on your device',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.photo_library_outlined,
+        'No Photos Found',
+        'No photos were found on your device',
+        null,
+        null,
       );
     }
 
+    final groupedPhotos = _groupPhotosByDate(photos);
+
     return FadeTransition(
-        opacity: _fadeAnimation,
-        child: GridView.builder(
-          padding: const EdgeInsets.all(8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 1,
-            mainAxisSpacing: 1,
-          ),
-          itemCount: photos.length,
-          itemBuilder: (context, index) {
-            return PhotoThumbnail(asset: photos[index]);
-          },
-        ),
+      opacity: _fadeAnimation,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: groupedPhotos.length,
+        itemBuilder: (context, index) {
+          final dateKey = groupedPhotos.keys.elementAt(index);
+          final dayPhotos = groupedPhotos[dateKey]!;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  dateKey,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 1,
+                  mainAxisSpacing: 1,
+                ),
+                itemCount: dayPhotos.length,
+                itemBuilder: (context, photoIndex) {
+                  return PhotoThumbnail(asset: dayPhotos[photoIndex]);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
     );
+  }
+
+  Widget _buildCenterMessage(IconData icon, String title, String subtitle, String? buttonText, VoidCallback? onPressed) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey),
+            const SizedBox(height: 20),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            if (buttonText != null && onPressed != null) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: onPressed, child: Text(buttonText)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, List<AssetEntity>> _groupPhotosByDate(List<AssetEntity> photos) {
+    final Map<String, List<AssetEntity>> grouped = {};
+
+    for (final photo in photos) {
+      final date = photo.createDateTime;
+      final dateKey = '${date.day}/${date.month}/${date.year}';
+
+      grouped.putIfAbsent(dateKey, () => []).add(photo);
+    }
+
+    // Sort by actual date (newest first)
+    final sortedEntries = grouped.entries.toList()..sort((a, b) {
+      final dateA = _parseDateKey(a.key);
+      final dateB = _parseDateKey(b.key);
+      return dateB.compareTo(dateA); // Newest first
+    });
+
+    return Map.fromEntries(sortedEntries);
+  }
+
+  DateTime _parseDateKey(String dateKey) {
+    final parts = dateKey.split('/');
+    final day = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final year = int.parse(parts[2]);
+    return DateTime(year, month, day);
   }
 }
 
@@ -236,9 +255,7 @@ class _PhotoThumbnailState extends State<PhotoThumbnail> with SingleTickerProvid
     try {
       final data = await widget.asset.thumbnailDataWithSize(const ThumbnailSize(200, 200));
       if (mounted && data != null) {
-        setState(() {
-          _thumbnailData = data;
-        });
+        setState(() => _thumbnailData = data);
         _controller.forward();
       }
     } catch (e) {
@@ -249,13 +266,9 @@ class _PhotoThumbnailState extends State<PhotoThumbnail> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        _showFullImage(context);
-      },
+      onTap: () => _showFullImage(context),
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-        ),
+        decoration: BoxDecoration(color: Colors.grey[300]),
         child: _thumbnailData != null
             ? FadeTransition(
           opacity: _animation,
@@ -266,9 +279,7 @@ class _PhotoThumbnailState extends State<PhotoThumbnail> with SingleTickerProvid
             height: double.infinity,
           ),
         )
-            : Container(
-          color: Colors.grey[300],
-        ),
+            : Container(color: Colors.grey[300]),
       ),
     );
   }

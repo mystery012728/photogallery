@@ -40,28 +40,19 @@ class _VideosPageState extends State<VideosPage> with TickerProviderStateMixin {
 
   Future<void> _loadVideos() async {
     try {
-      // Check permission first
       final permission = await _mediaCache.checkPermission();
 
       if (!permission) {
-        setState(() {
-          hasPermission = false;
-        });
+        setState(() => hasPermission = false);
         _showPermissionDialog();
         return;
       }
 
-      setState(() {
-        hasPermission = true;
-      });
-
-      // Load videos from cache (should be instant if cached)
+      setState(() => hasPermission = true);
       final loadedVideos = await _mediaCache.loadVideos();
 
       if (mounted) {
-        setState(() {
-          videos = loadedVideos;
-        });
+        setState(() => videos = loadedVideos);
         _fadeController.forward();
       }
     } catch (e) {
@@ -73,33 +64,28 @@ class _VideosPageState extends State<VideosPage> with TickerProviderStateMixin {
       }
     }
   }
+
   void _showPermissionDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Permission Required'),
-          content: const Text(
-            'This app needs access to your videos to display them. Please grant permission in settings.',
+      builder: (context) => AlertDialog(
+        title: const Text('Permission Required'),
+        content: const Text('This app needs access to your videos to display them. Please grant permission in settings.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _mediaCache.clearCache();
-                _loadVideos();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        );
-      },
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _mediaCache.clearCache();
+              _loadVideos();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -117,85 +103,118 @@ class _VideosPageState extends State<VideosPage> with TickerProviderStateMixin {
 
   Widget _buildBody() {
     if (!hasPermission) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.video_library_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Permission Required',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Please grant photo access permission to view your videos',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  _mediaCache.clearCache();
-                  _loadVideos();
-                },
-                child: const Text('Grant Permission'),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.video_library_outlined,
+        'Permission Required',
+        'Please grant photo access permission to view your videos',
+        'Grant Permission',
+            () {
+          _mediaCache.clearCache();
+          _loadVideos();
+        },
       );
     }
 
     if (videos.isEmpty) {
-      return FadeTransition(
-        opacity: _fadeAnimation,
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.video_library_outlined,
-                size: 80,
-                color: Colors.grey,
-              ),
-              SizedBox(height: 20),
-              Text(
-                'No Videos Found',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'No videos were found on your device',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
+      return _buildCenterMessage(
+        Icons.video_library_outlined,
+        'No Videos Found',
+        'No videos were found on your device',
+        null,
+        null,
       );
     }
 
+    final groupedVideos = _groupVideosByDate(videos);
+
     return FadeTransition(
       opacity: _fadeAnimation,
-        child: GridView.builder(
-          padding: const EdgeInsets.all(8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 1,
-            mainAxisSpacing: 1,
-          ),
-          itemCount: videos.length,
-          itemBuilder: (context, index) {
-            return VideoThumbnail(asset: videos[index]);
-          },
-        ),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(8),
+        itemCount: groupedVideos.length,
+        itemBuilder: (context, index) {
+          final dateKey = groupedVideos.keys.elementAt(index);
+          final dayVideos = groupedVideos[dateKey]!;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  dateKey,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 1,
+                  mainAxisSpacing: 1,
+                ),
+                itemCount: dayVideos.length,
+                itemBuilder: (context, videoIndex) {
+                  return VideoThumbnail(asset: dayVideos[videoIndex]);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
     );
+  }
+
+  Widget _buildCenterMessage(IconData icon, String title, String subtitle, String? buttonText, VoidCallback? onPressed) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey),
+            const SizedBox(height: 20),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            if (buttonText != null && onPressed != null) ...[
+              const SizedBox(height: 20),
+              ElevatedButton(onPressed: onPressed, child: Text(buttonText)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, List<AssetEntity>> _groupVideosByDate(List<AssetEntity> videos) {
+    final Map<String, List<AssetEntity>> grouped = {};
+
+    for (final video in videos) {
+      final date = video.createDateTime;
+      final dateKey = '${date.day}/${date.month}/${date.year}';
+
+      grouped.putIfAbsent(dateKey, () => []).add(video);
+    }
+
+    // Sort by actual date (newest first)
+    final sortedEntries = grouped.entries.toList()..sort((a, b) {
+      final dateA = _parseDateKey(a.key);
+      final dateB = _parseDateKey(b.key);
+      return dateB.compareTo(dateA); // Newest first
+    });
+
+    return Map.fromEntries(sortedEntries);
+  }
+
+  DateTime _parseDateKey(String dateKey) {
+    final parts = dateKey.split('/');
+    final day = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final year = int.parse(parts[2]);
+    return DateTime(year, month, day);
   }
 }
 
@@ -236,9 +255,7 @@ class _VideoThumbnailState extends State<VideoThumbnail> with SingleTickerProvid
     try {
       final data = await widget.asset.thumbnailDataWithSize(const ThumbnailSize(300, 200));
       if (mounted && data != null) {
-        setState(() {
-          _thumbnailData = data;
-        });
+        setState(() => _thumbnailData = data);
         _controller.forward();
       }
     } catch (e) {
@@ -249,13 +266,9 @@ class _VideoThumbnailState extends State<VideoThumbnail> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        _playVideo(context);
-      },
+      onTap: () => _playVideo(context),
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-        ),
+        decoration: BoxDecoration(color: Colors.grey[300]),
         child: _thumbnailData != null
             ? FadeTransition(
           opacity: _animation,
@@ -284,19 +297,11 @@ class _VideoThumbnailState extends State<VideoThumbnail> with SingleTickerProvid
                   bottom: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.7)),
                     child: Text(
                       _formatDuration(widget.asset.videoDuration),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
                 ),
@@ -304,18 +309,13 @@ class _VideoThumbnailState extends State<VideoThumbnail> with SingleTickerProvid
             ),
           ),
         )
-            : Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-          ),
-        ),
+            : Container(color: Colors.grey[300]),
       ),
     );
   }
 
   void _playVideo(BuildContext context) async {
     try {
-      // Pre-validate video file access
       final file = await widget.asset.file;
       if (file == null || !await file.exists()) {
         if (context.mounted) {
