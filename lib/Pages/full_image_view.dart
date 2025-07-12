@@ -29,7 +29,8 @@ class FullImageView extends StatelessWidget {
         child: FutureBuilder<Uint8List?>(
           future: asset.originBytes,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.done &&
+                snapshot.hasData) {
               return InteractiveViewer(
                 panEnabled: true,
                 boundaryMargin: const EdgeInsets.all(20),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:photogallery/Pages/home.dart';
-import 'package:photogallery/backend/media_cache.dart';
+import 'package:photogallery/backend/enhanced_media_cache.dart';
 
 void main() {
   runApp(const MyApp());
@@ -11,8 +11,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Preload media data for instant access
-    MediaCache().preloadAllData();
+    // Preload media data for instant access using enhanced cache
+    EnhancedMediaCache().preloadAllData();
+    // Load all album assets in the background for fast access
+    EnhancedMediaCache().loadAllAlbumAssetsInBackground();
 
     return MaterialApp(
       title: 'Photo Gallery',
